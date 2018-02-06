@@ -6,6 +6,7 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 public class InputNode implements Node {
+    static private int SIZE=96;
     private long x;
     private long y;
     private int value;
@@ -13,12 +14,12 @@ public class InputNode implements Node {
 
 
     @Override
-    public void calc() {
+    public void calc(Node[] a) {
 
     }
 
     @Override
-    public long get() {
-        return 0;
+    public double get() {
+        return value;
     }
 }
