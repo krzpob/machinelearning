@@ -1,33 +1,44 @@
 package pl.javasoft.recognizeletter;
 
-import com.codepoetics.protonpack.StreamUtils;
+import lombok.extern.slf4j.Slf4j;
 
-import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
-public class HiddenNode implements Node{
+@Slf4j
+public class HiddenNode extends RegullarNode implements Node{
 
-    private double result=0;
 
-    private double[] weights;
 
-    public HiddenNode(int sizeOfInput) {
-        weights = DoubleStream.generate(Math::random).limit(sizeOfInput).toArray();
+
+    public HiddenNode(int size, Node[] input) {
+        super(size);
+        a = Stream.of(input).mapToDouble(Node::get).toArray();
+        log.info("input: {}", (Object) w);
     }
 
-    @Override
-    public void calc(Node a[]) {
-        int index;
-        StreamUtils.zipWithIndex(Stream.of(a)).forEach(
-                nodeIndexed -> {
-                    result+=Math.abs(weights[((int) nodeIndexed.getIndex())]-nodeIndexed.getValue().get())/40.0;
-                }
-        );
 
+
+    @Override
+    public void calc(ActivateFunction activateFunction) {
+
+        double product = product();
+
+        result = activateFunction.activation(product);
     }
 
     @Override
     public double get() {
         return result;
+    }
+
+    @Override
+    public void teach(double[] delta) {
+        for(int i=0;i<w.length;i++){
+            double sum=0;
+            for (int j =0; j<delta.length;j++){
+                sum+=Math.pow(delta[j]-w[i],2);
+            }
+            w[i]-=sum/26;
+        }
     }
 }

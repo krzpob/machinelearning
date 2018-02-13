@@ -1,6 +1,6 @@
 package pl.javasoft.recognizeletter;
 
 public interface Node {
-    void calc(Node[] a );
+    void calc(ActivateFunction activateFunction );
     double get();
 }

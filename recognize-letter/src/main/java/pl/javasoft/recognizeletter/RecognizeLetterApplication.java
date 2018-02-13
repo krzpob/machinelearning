@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -25,9 +26,40 @@ public class RecognizeLetterApplication implements CommandLineRunner {
 	static final int ROWS = 12;
 	static final int HIDDEN_MESH_SIZE=40;
 
+	public static class SigmoidalUnipolar implements ActivateFunction {
+
+		@Override
+		public double activation(double x) {
+			return 1/(1+Math.exp(-x));
+		}
+	}
+
+	public static class Gauss implements ActivateFunction{
+
+		double a,b,c;
+
+		public Gauss(double a, double b, double c) {
+			this.a = a;
+			this.b = b;
+			this.c = c;
+		}
+
+		@Override
+		public double activation(double x) {
+			double frac = 2*c*c;
+			double num = Math.pow((x-b),2);
+			return a*Math.exp(num/frac);
+		}
+	}
+
+	private SigmoidalUnipolar sigmoidalUnipolar = new SigmoidalUnipolar();
+	private Gauss gauss = new Gauss(1,0,1);
+
 	public static void main(String[] args) {
 		SpringApplication.run(RecognizeLetterApplication.class, args);
 	}
+
+
 
 	@Override
 	public void run(String... args) throws Exception {
@@ -44,33 +76,56 @@ public class RecognizeLetterApplication implements CommandLineRunner {
 		InputNode[] inputNodes = readInputNodes(bufferedReader);
 		log.info("input as array: {}", (Object) inputNodes);
 
-		List<HiddenNode> hiddenMesh = new ArrayList<>();
-		for(int i=0;i<40;i++){
-			HiddenNode hiddenNode = new HiddenNode(96);
-			hiddenNode.calc(inputNodes);
-			hiddenMesh.add(hiddenNode);
+		HiddenNode[] hiddenMesh = new HiddenNode[HIDDEN_MESH_SIZE];
+		prepareHiddenLayer(hiddenMesh, inputNodes);
 
+		for(int i=0;i<HIDDEN_MESH_SIZE;i++){
+			log.info("hidden out: {}", hiddenMesh[i].get());
 		}
+		NormalNode[] normalMesh = new NormalNode[26];
 
-		List<NormalNode> normalMesh = new ArrayList<>();
+		double[] output = new double[26];
 
-		List<Double> output = new ArrayList<>();
+		prepareLastLayer(hiddenMesh, normalMesh, output);
 
-		for(int i=0;i<26;i++){
-			NormalNode normalNode = new NormalNode(40);
-			normalNode.calc(hiddenMesh.toArray(new HiddenNode[0]));
-			normalMesh.add(normalNode);
-			output.add(normalNode.get());
-		}
 
 		log.info("Output: {}", output);
 
-		Double max = output.stream().max(Comparator.naturalOrder()).get();
-		log.info("Maximum in output: {}", max);
-		log.info("Maximum at postion: {}", output.indexOf(max));
+		double[] pattern = new double[26];
+		Arrays.fill(pattern,0.0);
+		pattern[0]=1;
+		log.info("Delta: {}", ArrayUtils.diff(output, pattern));
+		for (int i=0;i<HIDDEN_MESH_SIZE;i++){
+			hiddenMesh[i].teach(ArrayUtils.diff(output, pattern));
+			hiddenMesh[i].calc(gauss);
+		}
 
+		for(int i=0;i<26;i++){
+			normalMesh[i].setA(hiddenMesh);
+			normalMesh[i].calc(x->1.0);
+			output[i]=normalMesh[i].get();
+		}
 
+		log.info("Output2: {}", output);
+		log.info("Delta2: {}", ArrayUtils.diff(output, pattern));
+	}
 
+	private void prepareLastLayer(HiddenNode[]  hiddenMesh, NormalNode[] normalMesh, double[] output) {
+		for(int i=0;i<26;i++){
+			NormalNode normalNode = new NormalNode(40, hiddenMesh);
+			normalNode.calc(gauss);
+			normalMesh[i]=normalNode;
+			output[i]=normalNode.get();
+		}
+	}
+
+	private void prepareHiddenLayer(HiddenNode[] hiddenMesh, Node[] input) {
+		for(int i=0;i<40;i++){
+			HiddenNode hiddenNode = new HiddenNode(96, input);
+			hiddenNode.calc(sigmoidalUnipolar);
+			hiddenMesh[i]=hiddenNode;
+
+		}
 	}
 
 	private InputNode[] readInputNodes(BufferedReader bufferedReader) {
@@ -88,14 +143,7 @@ public class RecognizeLetterApplication implements CommandLineRunner {
 		return inputNodes;
 	}
 
-	private int[][] weightGenerator(){
-		int[][] result = new int[COLS*ROWS][HIDDEN_MESH_SIZE];
 
-
-		IntStream.range(0, COLS*ROWS).forEach(ic-> result[ic]=IntStream.generate(()-> (int)(Math.random()*20)).limit(HIDDEN_MESH_SIZE).toArray());
-
-		return result;
-	}
 
 	private void printHelp(){
 		System.err.println("plik wejściowy jako pierwszy argument!!!");

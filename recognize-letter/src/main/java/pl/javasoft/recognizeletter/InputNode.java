@@ -1,25 +1,33 @@
 package pl.javasoft.recognizeletter;
 
-import lombok.AllArgsConstructor;
-import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 
-@ToString
-@AllArgsConstructor
+@Slf4j
 public class InputNode implements Node {
-    static private int SIZE=96;
-    private long x;
-    private long y;
-    private int value;
 
+    private double a;
+
+    public InputNode(long x, long y, Integer integer) {
+        a = integer;
+        log.info("Input value: {}", integer);
+    }
 
 
     @Override
-    public void calc(Node[] a) {
+    public void calc(ActivateFunction activateFunction) {
 
     }
 
     @Override
     public double get() {
-        return value;
+        return a;
+    }
+
+    @Override
+    public String toString() {
+        final StringBuffer sb = new StringBuffer("InputNode{");
+        sb.append("a=").append(a);
+        sb.append('}');
+        return sb.toString();
     }
 }
